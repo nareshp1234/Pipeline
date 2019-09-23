@@ -1,0 +1,67 @@
+def envVal = "${params['ENV']}"
+
+pipeline {
+    agent any 
+    stages {
+        stage('Desktop') {
+		     steps {
+			   echo "Selected Environment : ${params['ENV']}"
+			   echo 'Triggering desktop build'
+			   build 'jobname'			   
+				}			
+			 }			 
+		stage('Cloud') {
+		      steps {
+			   echo 'Triggering Cloud build'
+			   build 'jobname'			   
+			    }			
+			 }			
+		stage('Backend') {
+			  steps {
+			   echo 'Triggering Backend build'
+			   build 'jobname'			   
+				}			
+			 }
+			 /*
+		stage('Mac Installer') {
+		     steps {
+			   echo 'Triggering Mac Installer build'
+			   build 'jobname'			   
+			    }			
+			}
+			*/
+		stage('jobname_desktop') {
+		    steps {
+			    echo 'Trigger remote job  jobname'
+				script {
+				//Trigger remote job
+				def handle = triggerRemoteJob(remoteJenkinsName: 'Remote_Jenkins', job: 'jobname')
+
+				//Get information from the handle
+				def status = handle.getBuildStatus()
+				def buildUrl = handle.getBuildUrl()
+				echo buildUrl.toString() + " finished with " + status.toString()
+				}
+				}
+		}
+
+	   stage('S3 Upload') {
+				steps {              				
+			         withAWS(credentials: 'S3_CREDENTIALS', endpointUrl: 'https://s3.console.aws.amazon.com', region: 'us-east-1') {
+					 echo "Selected Environment : ${params['ENV']}"	
+				 
+					    echo 'uploading to ${envVal} environment'
+						echo 'Copying war files from jobname job (backend)'
+						sh 'aws s3 cp ${src} ${dest} --recursive --exclude "*" --include "*.war"'
+					
+					 echo 'Copying  files from jobname/ job (cloud)'
+					 sh 'aws s3 sync ${src} ${dest} --exclude "*Backup/*"'
+					 sh 'aws s3 rm  ${dest} --recursive --exclude "*Backup/*"'
+					 sh 'aws s3 cp ${src} ${dest} --recursive'               
+      					 
+			        }              	
+               }
+		
+            }
+}
+}
