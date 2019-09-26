@@ -44,6 +44,20 @@ pipeline {
 				}
 				}
 		}
+		stage('IntegrationTests') {
+		    steps {
+			    echo 'Trigger remote job  IntegrationTests'
+				script {
+				//Trigger remote job
+				def handle = triggerRemoteJob(remoteJenkinsName: 'Remote_Jenkins', job: 'IntegrationTests')
+
+				//Get information from the handle
+				def status = handle.getBuildStatus()
+				def buildUrl = handle.getBuildUrl()
+				echo buildUrl.toString() + " finished with " + status.toString()
+				}
+				}
+		}
 
 	   stage('S3 Upload') {
 				steps {              				
@@ -63,5 +77,14 @@ pipeline {
                }
 		
             }
+			stage('Launching Application instance'){
+		steps {
+		     echo " executing shutdown script"
+			 script {
+			   sh('chmod 777 Shutdown.sh')
+			   sh ('./Shutdown.sh')
+			 }
+		}
+		}
 }
 }
