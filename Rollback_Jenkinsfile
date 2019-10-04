@@ -1,0 +1,50 @@
+pipeline{
+    agent any
+        stages {
+            stage('my job 1') 
+            {
+                steps
+                {
+                    echo "building job 1"
+                    echo 'Trigger remote job  TestJob_Pipeline'
+				    script {
+				    //Trigger remote job
+				    def handle = triggerRemoteJob(remoteJenkinsName: 'Apps_Jenkins', job: 'TestJob_Pipeline')
+
+				    //Get information from the handle
+				    def status = handle.getBuildStatus()
+				    def buildUrl = handle.getBuildUrl()
+				    echo buildUrl.toString() + " finished with " + status.toString()
+				}
+                    
+                }
+               //Incase of failure Roll back stage 
+                post{
+                success {
+                       echo "Build is success"
+                }
+                failure {
+                    script{
+                        echo "build is failed!!!"
+                        withAWS(credentials: 'S3_Account', endpointUrl: 'https://s3.console.aws.amazon.com', region: 'us-east-1') 
+			          {
+					        echo "Rollback Copying war files from Backup folder"
+						    script {						         
+						         bat ("aws s3 cp s3://bucketname/Backup/filename.jar s3://bucketname/")
+						    }
+				     }                 
+                    
+                    }
+                }
+                aborted {
+                    echo "build is aborted!!!"
+                }
+                unstable {
+                    script{
+                           echo "build is unstable!!!"
+                         }
+                    }
+               } 
+            }            
+        }
+ }
