@@ -77,7 +77,30 @@ pipeline {
                }
 		
             }
-			stage('Launching Application instance'){
+	    stage('Static') {
+		    steps {
+			   echo 'Triggering Static build'
+			   build 'Static'			   
+			    }			
+		}
+         stage('S3 Upload - Static Content') 
+	   {
+			steps 
+				{              				
+			         withAWS(credentials: 'S3_CREDENTIALS', endpointUrl: 'https://s3.console.aws.amazon.com', region: 'us-east-1') 
+			         {
+					        echo "Selected Environment : ${params['ENV']}"	  
+					        echo "uploading to ${params['ENV']} environment"
+						    echo "Copying static from Static job "
+						    script {						         
+						         sh ("aws s3 cp ${src} ${dest} --recursive")           
+						          					        
+						    }
+				     }
+                 }
+        }   
+	    
+	stage('Launching Application instance'){
 		steps {
 		     echo " executing shutdown script"
 			 script {
